@@ -156,6 +156,12 @@ const MapView: React.FC<MapViewProps> = ({ videos }) => {
             <a href="https://console.cloud.google.com/google/maps-apis" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300"> Google Cloud Console </a>
             获取API密钥。
           </p>
+          <div className="bg-yellow-500/20 border border-yellow-500/40 rounded-lg p-3 mb-4">
+            <p className="text-yellow-200 text-xs">
+              <strong>技术框架说明：</strong><br/>
+              本应用使用 React + Vite + TypeScript 构建，使用 @googlemaps/react-wrapper 包集成Google Maps JavaScript API。
+            </p>
+          </div>
           <input
             type="text"
             placeholder="输入Google Maps API密钥"
