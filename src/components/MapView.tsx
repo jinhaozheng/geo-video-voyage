@@ -1,5 +1,6 @@
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { Wrapper, Status } from '@googlemaps/react-wrapper';
 import { MapPin, Play, Clock, Eye } from 'lucide-react';
 
 interface Video {
@@ -19,83 +20,170 @@ interface MapViewProps {
   videos: Video[];
 }
 
-const MapView: React.FC<MapViewProps> = ({ videos }) => {
+const GoogleMapComponent: React.FC<{ videos: Video[]; onVideoSelect: (video: Video) => void }> = ({ videos, onVideoSelect }) => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const map = useRef<google.maps.Map | null>(null);
+  const markers = useRef<google.maps.Marker[]>([]);
 
-  // 模拟地图功能，实际项目中会使用真实的地图库
-  const mockLocations = [
-    { lat: 39.9042, lng: 116.4074, name: '北京' },
-    { lat: 31.2304, lng: 121.4737, name: '上海' },
-    { lat: 22.3193, lng: 114.1694, name: '香港' },
-    { lat: 23.1291, lng: 113.2644, name: '广州' },
-  ];
+  useEffect(() => {
+    if (mapRef.current && !map.current) {
+      // 初始化地图
+      map.current = new google.maps.Map(mapRef.current, {
+        center: { lat: 39.9042, lng: 116.4074 }, // 北京
+        zoom: 10,
+        styles: [
+          {
+            featureType: "all",
+            stylers: [{ saturation: -20 }]
+          }
+        ]
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!map.current) return;
+
+    // 清除现有标记
+    markers.current.forEach(marker => marker.setMap(null));
+    markers.current = [];
+
+    // 添加视频标记
+    videos.forEach((video) => {
+      const marker = new google.maps.Marker({
+        position: { lat: video.latitude, lng: video.longitude },
+        map: map.current,
+        title: video.title,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 12,
+          fillColor: '#8B5CF6',
+          fillOpacity: 1,
+          strokeColor: '#FFFFFF',
+          strokeWeight: 2,
+        }
+      });
+
+      marker.addListener('click', () => {
+        onVideoSelect(video);
+      });
+
+      markers.current.push(marker);
+    });
+
+    // 如果有视频，调整地图视野以包含所有标记
+    if (videos.length > 0) {
+      const bounds = new google.maps.LatLngBounds();
+      videos.forEach(video => {
+        bounds.extend({ lat: video.latitude, lng: video.longitude });
+      });
+      map.current.fitBounds(bounds);
+    }
+  }, [videos, onVideoSelect]);
+
+  return <div ref={mapRef} className="w-full h-full" />;
+};
+
+const LoadingComponent = () => (
+  <div className="w-full h-full bg-gradient-to-br from-blue-900 via-slate-800 to-purple-900 flex items-center justify-center">
+    <div className="text-white text-lg">加载地图中...</div>
+  </div>
+);
+
+const ErrorComponent = () => (
+  <div className="w-full h-full bg-gradient-to-br from-blue-900 via-slate-800 to-purple-900 flex items-center justify-center">
+    <div className="text-center text-white">
+      <div className="text-lg mb-2">地图加载失败</div>
+      <div className="text-sm text-white/70">请检查网络连接或Google Maps API配置</div>
+    </div>
+  </div>
+);
+
+const render = (status: Status) => {
+  switch (status) {
+    case Status.LOADING:
+      return <LoadingComponent />;
+    case Status.FAILURE:
+      return <ErrorComponent />;
+    case Status.SUCCESS:
+      return null;
+  }
+};
+
+const MapView: React.FC<MapViewProps> = ({ videos }) => {
+  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [apiKey, setApiKey] = useState<string>('');
+
+  const handleVideoSelect = useCallback((video: Video) => {
+    setSelectedVideo(video);
+  }, []);
+
+  // 模拟视频数据（如果没有真实视频数据）
+  const mockVideos = videos.length === 0 ? [
+    {
+      id: '1',
+      url: '',
+      thumbnail: '/placeholder.svg',
+      latitude: 39.9042,
+      longitude: 116.4074,
+      title: '北京天安门广场',
+      timestamp: new Date(),
+      isOwn: true,
+      isPublic: true,
+      views: 123
+    },
+    {
+      id: '2',
+      url: '',
+      thumbnail: '/placeholder.svg',
+      latitude: 31.2304,
+      longitude: 121.4737,
+      title: '上海外滩夜景',
+      timestamp: new Date(),
+      isOwn: false,
+      isPublic: true,
+      views: 456
+    }
+  ] : videos;
+
+  if (!apiKey) {
+    return (
+      <div className="w-full h-full bg-gradient-to-br from-blue-900 via-slate-800 to-purple-900 flex items-center justify-center">
+        <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl max-w-md w-full mx-4 border border-white/20">
+          <h3 className="text-white text-lg font-semibold mb-4">配置Google Maps</h3>
+          <p className="text-white/70 text-sm mb-4">
+            请输入您的Google Maps API密钥。您可以在 
+            <a href="https://console.cloud.google.com/google/maps-apis" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300"> Google Cloud Console </a>
+            获取API密钥。
+          </p>
+          <input
+            type="text"
+            placeholder="输入Google Maps API密钥"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            className="w-full px-4 py-2 rounded-lg bg-white/20 text-white placeholder-white/50 border border-white/20 focus:border-white/40 focus:outline-none mb-4"
+          />
+          <button
+            onClick={() => {
+              if (apiKey.trim()) {
+                // API密钥会在下面的Wrapper组件中使用
+              }
+            }}
+            disabled={!apiKey.trim()}
+            className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white py-2 px-4 rounded-lg hover:from-purple-600 hover:to-blue-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            加载地图
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative h-full">
-      {/* 地图容器 */}
-      <div 
-        ref={mapRef} 
-        className="w-full h-full bg-gradient-to-br from-blue-900 via-slate-800 to-purple-900 rounded-lg relative overflow-hidden"
-      >
-        {/* 地图背景效果 */}
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-10 left-10 w-32 h-32 bg-blue-400 rounded-full blur-xl"></div>
-          <div className="absolute top-40 right-20 w-24 h-24 bg-purple-400 rounded-full blur-xl"></div>
-          <div className="absolute bottom-20 left-1/3 w-28 h-28 bg-cyan-400 rounded-full blur-xl"></div>
-        </div>
-
-        {/* 模拟地图标记 */}
-        {mockLocations.map((location, index) => (
-          <div
-            key={index}
-            className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer group"
-            style={{
-              top: `${20 + index * 20}%`,
-              left: `${15 + index * 20}%`,
-            }}
-            onClick={() => {
-              // 模拟选择该位置的视频
-              const locationVideos = videos.filter((_, i) => i % mockLocations.length === index);
-              if (locationVideos.length > 0) {
-                setSelectedVideo(locationVideos[0]);
-              }
-            }}
-          >
-            <div className="relative">
-              <div className="bg-gradient-to-r from-purple-500 to-blue-500 p-3 rounded-full shadow-lg group-hover:scale-110 transition-transform duration-300">
-                <MapPin className="h-5 w-5 text-white" />
-              </div>
-              {videos.filter((_, i) => i % mockLocations.length === index).length > 0 && (
-                <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
-                  {videos.filter((_, i) => i % mockLocations.length === index).length}
-                </div>
-              )}
-            </div>
-            <div className="mt-2 bg-black/50 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              {location.name}
-            </div>
-          </div>
-        ))}
-
-        {/* 地图控制按钮 */}
-        <div className="absolute top-4 right-4 flex flex-col space-y-2">
-          <button className="bg-white/20 backdrop-blur-md p-2 rounded-lg text-white hover:bg-white/30 transition-colors duration-300">
-            <span className="text-xl">+</span>
-          </button>
-          <button className="bg-white/20 backdrop-blur-md p-2 rounded-lg text-white hover:bg-white/30 transition-colors duration-300">
-            <span className="text-xl">-</span>
-          </button>
-        </div>
-
-        {/* 当前位置指示器 */}
-        <div className="absolute bottom-4 left-4 bg-white/20 backdrop-blur-md p-3 rounded-lg text-white">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-            <span className="text-sm">当前位置</span>
-          </div>
-        </div>
-      </div>
+      <Wrapper apiKey={apiKey} render={render}>
+        <GoogleMapComponent videos={mockVideos} onVideoSelect={handleVideoSelect} />
+      </Wrapper>
 
       {/* 视频详情弹窗 */}
       {selectedVideo && (
