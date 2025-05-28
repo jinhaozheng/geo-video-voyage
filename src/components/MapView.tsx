@@ -112,7 +112,6 @@ const render = (status: Status) => {
 
 const MapView: React.FC<MapViewProps> = ({ videos }) => {
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
-  const [apiKey, setApiKey] = useState<string>('');
 
   const handleVideoSelect = useCallback((video: Video) => {
     setSelectedVideo(video);
@@ -146,48 +145,9 @@ const MapView: React.FC<MapViewProps> = ({ videos }) => {
     }
   ] : videos;
 
-  if (!apiKey) {
-    return (
-      <div className="w-full h-full bg-gradient-to-br from-blue-900 via-slate-800 to-purple-900 flex items-center justify-center">
-        <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl max-w-md w-full mx-4 border border-white/20">
-          <h3 className="text-white text-lg font-semibold mb-4">配置Google Maps</h3>
-          <p className="text-white/70 text-sm mb-4">
-            请输入您的Google Maps API密钥。您可以在 
-            <a href="https://console.cloud.google.com/google/maps-apis" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300"> Google Cloud Console </a>
-            获取API密钥。
-          </p>
-          <div className="bg-yellow-500/20 border border-yellow-500/40 rounded-lg p-3 mb-4">
-            <p className="text-yellow-200 text-xs">
-              <strong>技术框架说明：</strong><br/>
-              本应用使用 React + Vite + TypeScript 构建，使用 @googlemaps/react-wrapper 包集成Google Maps JavaScript API。
-            </p>
-          </div>
-          <input
-            type="text"
-            placeholder="输入Google Maps API密钥"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            className="w-full px-4 py-2 rounded-lg bg-white/20 text-white placeholder-white/50 border border-white/20 focus:border-white/40 focus:outline-none mb-4"
-          />
-          <button
-            onClick={() => {
-              if (apiKey.trim()) {
-                // API密钥会在下面的Wrapper组件中使用
-              }
-            }}
-            disabled={!apiKey.trim()}
-            className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white py-2 px-4 rounded-lg hover:from-purple-600 hover:to-blue-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            加载地图
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="relative h-full">
-      <Wrapper apiKey={apiKey} render={render}>
+      <Wrapper apiKey="AIzaSyAY98e-cFb2XFT4iTVxwjFJGwkkGqi8sB0" render={render}>
         <GoogleMapComponent videos={mockVideos} onVideoSelect={handleVideoSelect} />
       </Wrapper>
 
